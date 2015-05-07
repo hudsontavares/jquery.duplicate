@@ -135,7 +135,11 @@
                             
                             if (basicHtml == null)basicHtml = '';
                             
-                            target.append(basicHtml.replace(/\{current_index\}/gmi, count + 1));
+                            /* We must change the "delete" button text, to keep the same standard of the "add" button */
+                            var newRecord = $(basicHtml.replace(/\{current_index\}/gmi, count + 1));
+                            newRecord.find('button.' + settings.removeButton.className.split(' ').join('.')).html(settings.removeButton.text);
+                            target.append(newRecord);
+                            
                             return true;
                         }
                     );
