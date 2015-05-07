@@ -14,12 +14,20 @@
                 { 
                     /* The class that must be defined on the clonable element */
                     duplicableClass     : 'clonable',
-                    /* The data field for each DOM entry that stores the unique identifier of the related registry  */
-                    registryIdField     : 'data-id',
-                    /* The data field for each DOM entry that stores the class name of the related registry  */
-                    registryClassName   : 'data-class-name',
-                    /* If required, you can specify the maximum number of entries allowedd */
-                    maxItems            : 0,
+                    registry            :
+                    {
+                        /* The data field for each DOM entry that stores the unique identifier of the related registry  */
+                        idField     : 'data-id',
+                        /* The data field for each DOM entry that stores the class name of the related registry  */
+                        modelName   : 'data-class-name',
+                        /* The URL you wanna call to control exclusion on server-side; must return a JSON in the format {status: true|false if it can't exclude the data, message: 'whatever message you wanna give to the user'} */
+                        actionUrl   : null,
+                        /* The confirmation message for each registry removed */
+                        confirmMessage : 'Are you sure you want to delete this record? This action can\'t be undone.',
+                        /* If required, you can specify the maximum number of entries allowedd */
+                        maxItems    : {total: 0, message: 'The max items allowed limit has been reached.'},
+                        
+                    },
                     /* The add button that will be automatically appended to the DOM tree, adjacent to the duplicable container */
                     addButton           :
                     {
@@ -54,22 +62,22 @@
                     {                        
                         var parent = target.parents('li.registry');
                         
-                        if(parent.attr('data-idItem') == 0)
+                        if(parent.attr('data-idItem') == 0 || settings.registry.actionUrl == null)
                             parent.slideUp('fast', function(){this.parentNode.removeChild(this);return true;});
                         else
                         {
-                            if(window.confirm(parent.attr('data-message') || 'Confirmar a exclusão do registro atual?'))
+                            if(window.confirm(settings.registry.confirmMessage))
                             {
                                 $.post
                                 (
-                                    'services/delete_item.php',
-                                    {idItem: parent.attr('data-idItem'), className: parent.attr('data-className')},
+                                    settings.registry.actionUrl,
+                                    {id: parent.attr(settings.registry.idField), modelName: parent.attr(settings.registry.modelName)},
                                     function(data)
                                     {
-                                        data = eval('(' + data + ')');
-                                        alert(data.message);
+                                        if (data != '')data = eval('(' + data + ')');
+                                        if('message' in data)alert(data.message);
                                         
-                                        if(data.status)
+                                        if('status' in data && data.status)
                                             parent.slideUp('fast', function(){this.parentNode.removeChild(this);return true;});
                                     }
                                 );
@@ -117,7 +125,14 @@
                             var count     = target.find('li.registry').length;
                             var basicHtml = target[0].basicHtml;
                             
-                            if(settings.maxItems != 0 && settings.maxItems <= count)return false;
+                            if(settings.registry.maxItems.total != 0 && settings.registry.maxItems.total <= count)
+                            {
+                                if (settings.registry.maxItems.message != null)
+                                    alert(settings.registry.maxItems.message);
+                                
+                                return false;
+                            }
+                            
                             if (basicHtml == null)basicHtml = '';
                             
                             target.append(basicHtml.replace(/\{current_index\}/gmi, count + 1));
