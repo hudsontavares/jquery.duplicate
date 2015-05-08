@@ -82,8 +82,7 @@
                         '</button>'
                         ].join('')
                     );
-                    
-                    
+
                     target.append(newRecord);
                     return true;
                 }
@@ -127,27 +126,6 @@
                 }
             );
             
-            /*
-                The event is binded on the holder itself and uses bubbling to keep the memory footprint
-                low, even with huge lists of duplicated items
-            */
-            $(this).bind
-            (
-                'click',
-                function(e)
-                {
-                    var target = $(e.target);
-                    
-                    if(target.hasClass(settings.removeButton.className))
-                    {                        
-                        var parent = target.parents(settings.duplicable.nodeName + '.' + settings.duplicable.copyClass);
-                        $(this).trigger('duplicate.remove', [parent, settings]);
-                    }
-                    
-                    return true;
-                }
-            );
-            
             /* Returns the current object for chaining purposes */
             return this.each
             (
@@ -166,11 +144,26 @@
                     /* The basic HTML is a copy of our duplicable element; we copy it and remove! */
                     settings.duplicable.html = source[0].outerHTML;
                     source.remove();
+            
+                    /* The event capture inside each duplicable tree */
+                    $(this).bind
+                    (
+                        'click',
+                        function(e)
+                        {
+                            var target = $(e.target);
+                            
+                            if(target.hasClass(settings.removeButton.className))
+                            {                        
+                                var parent = target.parents(settings.duplicable.nodeName + '.' + settings.duplicable.copyClass);
+                                $(this).trigger('duplicate.remove', [parent, settings]);
+                            }
+                            
+                            return true;
+                        }
+                    );
                     
-                    /* The add button must enter the tree */
-                    $(this).after(add);
-                    
-                    /* The add item button triggers a duplicate.add event */
+                    /* The add item button behavior */
                     add.bind
                     (
                         'click',
@@ -179,7 +172,7 @@
                             target.trigger('duplicate.add', [{}, settings]);
                             return true;
                         }
-                    );
+                    ).insertBefore(this);
                     
                     return true;
                 }
