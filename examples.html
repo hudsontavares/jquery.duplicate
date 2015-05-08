@@ -8,19 +8,18 @@
     <body>
         
         <h1>jQuery.duplicate</h1>
-        <p>Make you CRUD way easier</p>
+        <p>CRUD for multiple entries in a single form page made easier</p>
         
         <h2>Example 1: simple usage</h2>
         <div id="example-1">
             <ul>
                 <li class="clonable">
                     {current_index}. This is a duplicate line
-                    <button class="delete record"><!-- The text is replaced here --></button>
                 </li>
             </ul>
         </div>
         
-        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.11.3/jquery.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
         <script type="text/javascript" src="jquery.duplicate.js"></script>
         <script type="text/javascript">
             (function($)
@@ -30,7 +29,7 @@
                     function()
                     {
                         /* The first example */
-                        $('#example-1 ul').duplicate({addButton:{text: 'Add Item'}, removeButton: {className: 'delete record'}});
+                        $('#example-1 ul').duplicate({addButton:{text: 'Add New Item'}, removeButton: {text: 'Remove Item'}});
                         return true;
                     }
                 );

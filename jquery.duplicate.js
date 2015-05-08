@@ -7,13 +7,13 @@
     {
         $.fn.duplicate = function(params)
         {
-            /* The basic settings of our duplicable content; they can all be defined on duplicate() call */
+            /* The basic settings of our duplicable content; they can all be defined when we call duplicate() */
             var settings = $.extend
             (
                 true,
                 { 
-                    /* The class that must be defined on the clonable element */
-                    duplicableClass     : 'clonable',
+                    /* The original and copy related attributes */
+                    duplicable          : {nodeName: null, originalClass: 'clonable', copyClass: 'registry'},
                     registry            :
                     {
                         /* The data field for each DOM entry that stores the unique identifier of the related registry  */
@@ -47,9 +47,14 @@
                 params
             );
             
+            /* We always consider the first child of our  */
+            settings.duplicable.nodeName = $(':first-child', this);
+            if (settings.duplicable.nodeName.length == 0)return this;
+            settings.duplicable.nodeName = settings.duplicable.nodeName[0].tagName.toLowerCase();
+            
             /*
                 The event is binded on the holder itself and uses bubbling to keep the memory footprint
-                low, even with huge lists of duplicate items
+                low, even with huge lists of duplicated items
             */
             $(this).bind
             (
@@ -58,9 +63,9 @@
                 {
                     var target = $(e.target);
                     
-                    if(target.is('button.delete'))
+                    if(target.hasClass(settings.removeButton.className))
                     {                        
-                        var parent = target.parents('li.registry');
+                        var parent = target.parents(settings.duplicable.nodeName + '.' + settings.duplicable.copyClass);
                         
                         if(parent.attr('data-idItem') == 0 || settings.registry.actionUrl == null)
                             parent.slideUp('fast', function(){this.parentNode.removeChild(this);return true;});
@@ -94,7 +99,7 @@
             (
                 function(index)
                 {
-                    var source  = $(this).find('li.' + settings.duplicableClass).removeClass('clonable').addClass('registry'), target = $(this),
+                    var source  = $(this).find(settings.duplicable.nodeName + '.' + settings.duplicable.originalClass).removeClass(settings.duplicable.originalClass).addClass(settings.duplicable.copyClass), target = $(this),
                     add     = $
                     (
                         [
@@ -122,7 +127,7 @@
                         'click',
                         function(e)
                         {
-                            var count     = target.find('li.registry').length;
+                            var count     = target.find(settings.duplicable.nodeName + '.' + settings.duplicable.copyClass).length;
                             var basicHtml = target[0].basicHtml;
                             
                             if(settings.registry.maxItems.total != 0 && settings.registry.maxItems.total <= count)
@@ -135,11 +140,19 @@
                             
                             if (basicHtml == null)basicHtml = '';
                             
-                            /* We must change the "delete" button text, to keep the same standard of the "add" button */
+                            /* We must create the delete button on the new record and add it to the tree */
                             var newRecord = $(basicHtml.replace(/\{current_index\}/gmi, count + 1));
-                            newRecord.find('button.' + settings.removeButton.className.split(' ').join('.')).html(settings.removeButton.text);
+                            newRecord.append
+                            (
+                                [
+                                    '<button type="button" class="',
+                                    settings.removeButton.className,
+                                    '">',
+                                    settings.removeButton.text,
+                                    '</button>'
+                                ].join('')
+                            );
                             target.append(newRecord);
-                            
                             return true;
                         }
                     );
