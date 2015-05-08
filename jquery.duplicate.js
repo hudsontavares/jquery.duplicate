@@ -1,6 +1,6 @@
 /**
  * A plugin that allows you define reproducable fields
- * following it's patterns.
+ * following a pattern that you define once.
 */
 (
     function($)
@@ -13,7 +13,7 @@
                 true,
                 { 
                     /* The original and copy related attributes */
-                    duplicable          : {nodeName: null, originalClass: 'clonable', copyClass: 'registry'},
+                    duplicable          : {nodeName: null, html: '', originalClass: 'clonable', copyClass: 'registry'},
                     registry            :
                     {
                         /* The data field for each DOM entry that stores the unique identifier of the related registry  */
@@ -32,25 +32,100 @@
                     addButton           :
                     {
                         text        : 'Add',
-                        className   : 'button duplicate add',
-                        onCreate    : function(element){return element;}
+                        className   : 'button duplicate add'
                     },
                     /* The remove button that will be automatically appended to the DOM tree, adjacent to the duplicable container */
                     removeButton        :
                     {
                         text            : 'Remove',
-                        className       : 'button duplicate remove',
-                        onRemoveStart   : function(element){return true;},
-                        onRemoveEnd     : function(id, message, element){return true;}
+                        className       : 'button duplicate remove'
                     }
                 },
                 params
             );
             
-            /* We always consider the first child of our  */
+            /* We always consider the first child as the duplicable tag, to not make the programmer repeat himself  */
             settings.duplicable.nodeName = $(':first-child', this);
             if (settings.duplicable.nodeName.length == 0)return this;
             settings.duplicable.nodeName = settings.duplicable.nodeName[0].tagName.toLowerCase();
+            
+            /* Event listeners: to allow control from outside the plugin */
+            /* Add new registry */
+            $(this).bind
+            (
+                'duplicate.add',
+                function(event, params, config)
+                {
+                    if (config == null)config = settings;
+                    
+                    /* The counter of current entries and the new record holder */
+                    var  target    = $(this),
+                         count     = target.find(config.duplicable.nodeName + '.' + config.duplicable.copyClass).length,
+                         newRecord = $(config.duplicable.html.replace(/\{current_index\}/gmi, count + 1));
+                    
+                    
+                    /* We must respect if there's a maxItems variable defined */
+                    if(config.registry.maxItems.total != 0 && config.registry.maxItems.total <= count)
+                    {
+                        if (config.registry.maxItems.message != null)
+                            alert(config.registry.maxItems.message);
+                        
+                        return false;
+                    }
+                    
+                    /* Appending the remove button */
+                    newRecord.append
+                    (
+                        [
+                        '<button type="button" class="', config.removeButton.className, '">',
+                            config.removeButton.text,
+                        '</button>'
+                        ].join('')
+                    );
+                    
+                    
+                    target.append(newRecord);
+                    return true;
+                }
+            )
+            /* Remove a registry */
+            .bind
+            (
+                'duplicate.remove',
+                function(event, registry, config)
+                {
+                    if (config == null)config = settings;
+                    
+                    /* When dealing with local-only entries, things are really easier */
+                    if (registry.attr('data-idItem') == 0 || config.registry.actionUrl == null)
+                    {
+                        registry.slideUp('fast', function(){this.parentNode.removeChild(this);return true;});
+                        return true;
+                    }
+                    
+                    /* When you have a remote ID and an action URL defined,  things need to be checked first */
+                    if(window.confirm(config.registry.confirmMessage))
+                    {
+                        $.post
+                        (
+                            config.registry.actionUrl,
+                            {id: registry.attr(config.registry.idField), modelName: registry.attr(config.registry.modelName)},
+                            function(data)
+                            {
+                                if (data != '')data = eval('(' + data + ')');
+                                if('message' in data)alert(data.message);
+                                
+                                if('status' in data && data.status)
+                                    parent.slideUp('fast', function(){this.parentNode.removeChild(this);return true;});
+                                    
+                                return true;
+                            }
+                        );
+                    }
+                    
+                    return true;
+                }
+            );
             
             /*
                 The event is binded on the holder itself and uses bubbling to keep the memory footprint
@@ -66,28 +141,7 @@
                     if(target.hasClass(settings.removeButton.className))
                     {                        
                         var parent = target.parents(settings.duplicable.nodeName + '.' + settings.duplicable.copyClass);
-                        
-                        if(parent.attr('data-idItem') == 0 || settings.registry.actionUrl == null)
-                            parent.slideUp('fast', function(){this.parentNode.removeChild(this);return true;});
-                        else
-                        {
-                            if(window.confirm(settings.registry.confirmMessage))
-                            {
-                                $.post
-                                (
-                                    settings.registry.actionUrl,
-                                    {id: parent.attr(settings.registry.idField), modelName: parent.attr(settings.registry.modelName)},
-                                    function(data)
-                                    {
-                                        if (data != '')data = eval('(' + data + ')');
-                                        if('message' in data)alert(data.message);
-                                        
-                                        if('status' in data && data.status)
-                                            parent.slideUp('fast', function(){this.parentNode.removeChild(this);return true;});
-                                    }
-                                );
-                            }
-                        }
+                        $(this).trigger('duplicate.remove', [parent, settings]);
                     }
                     
                     return true;
@@ -103,56 +157,26 @@
                     add     = $
                     (
                         [
-                            '<button type="button" class="',
-                            settings.addButton.className,
-                            '">',
+                        '<button type="button" class="', settings.addButton.className, '">',
                             settings.addButton.text,
-                            '</button>'
+                        '</button>'
                         ].join('')
                     );
 
                     /* The basic HTML is a copy of our duplicable element; we copy it and remove! */
-                    this.basicHtml = source[0].outerHTML;
+                    settings.duplicable.html = source[0].outerHTML;
                     source.remove();
                     
                     /* The add button must enter the tree */
                     $(this).after(add);
                     
-                    /*
-                        The add item button behavior; as it is located outside the duplicable tree,
-                        we must listen to it here
-                    */
+                    /* The add item button triggers a duplicate.add event */
                     add.bind
                     (
                         'click',
                         function(e)
                         {
-                            var count     = target.find(settings.duplicable.nodeName + '.' + settings.duplicable.copyClass).length;
-                            var basicHtml = target[0].basicHtml;
-                            
-                            if(settings.registry.maxItems.total != 0 && settings.registry.maxItems.total <= count)
-                            {
-                                if (settings.registry.maxItems.message != null)
-                                    alert(settings.registry.maxItems.message);
-                                
-                                return false;
-                            }
-                            
-                            if (basicHtml == null)basicHtml = '';
-                            
-                            /* We must create the delete button on the new record and add it to the tree */
-                            var newRecord = $(basicHtml.replace(/\{current_index\}/gmi, count + 1));
-                            newRecord.append
-                            (
-                                [
-                                    '<button type="button" class="',
-                                    settings.removeButton.className,
-                                    '">',
-                                    settings.removeButton.text,
-                                    '</button>'
-                                ].join('')
-                            );
-                            target.append(newRecord);
+                            target.trigger('duplicate.add', [{}, settings]);
                             return true;
                         }
                     );
