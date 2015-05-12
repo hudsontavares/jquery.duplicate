@@ -13,14 +13,18 @@ The basic usage
 
 Considering the following markup:
 
+...
 <ul id="my-duplicable">
   <li class="clonable">
     This line has been duplicated {current_index} time(s).
   </li>
 </ul>
+...
 
-You can init it easily:
+You can init it easily, calling:
+...
 $('#my-duplicable').duplicate();
+...
 
 It's important to say you always bind the duplicate funcionality to the main holder.
 Parameters can be set by passing an object to the duplicate() call.
